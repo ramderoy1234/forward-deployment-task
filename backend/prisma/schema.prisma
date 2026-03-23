@@ -1,0 +1,384 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SalesOrderHeader {
+  salesOrder                   String   @id
+  salesOrderType               String?
+  salesOrganization            String?
+  distributionChannel          String?
+  organizationDivision         String?
+  salesGroup                   String?
+  salesOffice                  String?
+  soldToParty                  String?
+  creationDate                 DateTime?
+  createdByUser                String?
+  lastChangeDateTime           DateTime?
+  totalNetAmount               Decimal?
+  overallDeliveryStatus        String?
+  overallOrdReltdBillgStatus   String?
+  overallSdDocReferenceStatus  String?
+  transactionCurrency          String?
+  pricingDate                  DateTime?
+  requestedDeliveryDate        DateTime?
+  headerBillingBlockReason     String?
+  deliveryBlockReason          String?
+  incotermsClassification      String?
+  incotermsLocation1           String?
+  customerPaymentTerms         String?
+  totalCreditCheckStatus       String?
+
+  items         SalesOrderItem[]
+  scheduleLines SalesOrderScheduleLine[]
+  customer      BusinessPartner?         @relation(fields: [soldToParty], references: [businessPartner])
+
+  @@map("sales_order_headers")
+}
+
+model SalesOrderItem {
+  salesOrder             String
+  salesOrderItem         String
+  salesOrderItemCategory String?
+  material               String?
+  requestedQuantity      Decimal?
+  requestedQuantityUnit  String?
+  transactionCurrency    String?
+  netAmount              Decimal?
+  materialGroup          String?
+  productionPlant        String?
+  storageLocation        String?
+  salesDocumentRjcnReason String?
+  itemBillingBlockReason String?
+
+  order   SalesOrderHeader @relation(fields: [salesOrder], references: [salesOrder])
+  product Product?         @relation(fields: [material], references: [product])
+
+  @@id([salesOrder, salesOrderItem])
+  @@map("sales_order_items")
+}
+
+model SalesOrderScheduleLine {
+  salesOrder              String
+  salesOrderItem          String
+  scheduleLine            String
+  confirmedDeliveryDate   DateTime?
+  orderQuantityUnit       String?
+  confdOrderQtyByMatlAvailCheck Decimal?
+
+  order SalesOrderHeader @relation(fields: [salesOrder], references: [salesOrder])
+
+  @@id([salesOrder, salesOrderItem, scheduleLine])
+  @@map("sales_order_schedule_lines")
+}
+
+model OutboundDeliveryHeader {
+  deliveryDocument              String   @id
+  actualGoodsMovementDate       DateTime?
+  actualGoodsMovementTime       String?
+  creationDate                  DateTime?
+  creationTime                  String?
+  deliveryBlockReason           String?
+  hdrGeneralIncompletionStatus  String?
+  headerBillingBlockReason      String?
+  lastChangeDate                DateTime?
+  overallGoodsMovementStatus    String?
+  overallPickingStatus          String?
+  overallProofOfDeliveryStatus  String?
+  shippingPoint                 String?
+
+  items OutboundDeliveryItem[]
+
+  @@map("outbound_delivery_headers")
+}
+
+model OutboundDeliveryItem {
+  deliveryDocument       String
+  deliveryDocumentItem   String
+  actualDeliveryQuantity Decimal?
+  batch                  String?
+  deliveryQuantityUnit   String?
+  itemBillingBlockReason String?
+  lastChangeDate         DateTime?
+  plant                  String?
+  referenceSdDocument    String?
+  referenceSdDocumentItem String?
+  storageLocation        String?
+
+  delivery OutboundDeliveryHeader @relation(fields: [deliveryDocument], references: [deliveryDocument])
+
+  @@id([deliveryDocument, deliveryDocumentItem])
+  @@map("outbound_delivery_items")
+}
+
+model BillingDocumentHeader {
+  billingDocument           String   @id
+  billingDocumentType       String?
+  creationDate              DateTime?
+  creationTime              String?
+  lastChangeDateTime        DateTime?
+  billingDocumentDate       DateTime?
+  billingDocumentIsCancelled String?
+  cancelledBillingDocument  String?
+  totalNetAmount            Decimal?
+  transactionCurrency       String?
+  companyCode               String?
+  fiscalYear                String?
+  accountingDocument        String?
+  soldToParty               String?
+
+  items BillingDocumentItem[]
+
+  @@map("billing_document_headers")
+}
+
+model BillingDocumentItem {
+  billingDocument      String
+  billingDocumentItem  String
+  material             String?
+  billingQuantity      Decimal?
+  billingQuantityUnit  String?
+  netAmount            Decimal?
+  transactionCurrency  String?
+  referenceSdDocument  String?
+  referenceSdDocumentItem String?
+
+  header  BillingDocumentHeader @relation(fields: [billingDocument], references: [billingDocument])
+  product Product?              @relation(fields: [material], references: [product])
+
+  @@id([billingDocument, billingDocumentItem])
+  @@map("billing_document_items")
+}
+
+model JournalEntryItem {
+  companyCode                  String
+  fiscalYear                   String
+  accountingDocument           String
+  accountingDocumentItem       String
+  glAccount                    String?
+  referenceDocument            String?
+  costCenter                   String?
+  profitCenter                 String?
+  transactionCurrency          String?
+  amountInTransactionCurrency  Decimal?
+  companyCodeCurrency          String?
+  amountInCompanyCodeCurrency  Decimal?
+  postingDate                  DateTime?
+  documentDate                 DateTime?
+  accountingDocumentType       String?
+  assignmentReference          String?
+  lastChangeDateTime           DateTime?
+  customer                     String?
+  financialAccountType         String?
+  clearingDate                 DateTime?
+  clearingAccountingDocument   String?
+  clearingDocFiscalYear        String?
+
+  @@id([companyCode, fiscalYear, accountingDocument, accountingDocumentItem])
+  @@map("journal_entry_items")
+}
+
+model Payment {
+  companyCode                  String
+  fiscalYear                   String
+  accountingDocument           String
+  accountingDocumentItem       String
+  clearingDate                 DateTime?
+  clearingAccountingDocument   String?
+  clearingDocFiscalYear        String?
+  amountInTransactionCurrency  Decimal?
+  transactionCurrency          String?
+  amountInCompanyCodeCurrency  Decimal?
+  companyCodeCurrency          String?
+  customer                     String?
+  invoiceReference             String?
+  invoiceReferenceFiscalYear   String?
+  salesDocument                String?
+  salesDocumentItem            String?
+  postingDate                  DateTime?
+  documentDate                 DateTime?
+  assignmentReference          String?
+  glAccount                    String?
+  financialAccountType         String?
+  profitCenter                 String?
+  costCenter                   String?
+
+  @@id([companyCode, fiscalYear, accountingDocument, accountingDocumentItem])
+  @@map("payments")
+}
+
+model BusinessPartner {
+  businessPartner         String  @id
+  customer                String?
+  businessPartnerCategory String?
+  businessPartnerFullName String?
+  businessPartnerGrouping String?
+  businessPartnerName     String?
+  correspondenceLanguage  String?
+  createdByUser           String?
+  creationDate            DateTime?
+  creationTime            String?
+  firstName               String?
+  formOfAddress           String?
+  industry                String?
+  lastChangeDate          DateTime?
+  lastName                String?
+  organizationBpName1     String?
+  organizationBpName2     String?
+  businessPartnerIsBlocked String?
+  isMarkedForArchiving    String?
+
+  orders      SalesOrderHeader[]
+  addresses   BusinessPartnerAddress[]
+
+  @@map("business_partners")
+}
+
+model BusinessPartnerAddress {
+  businessPartner       String
+  addressId             String
+  validityStartDate     DateTime?
+  validityEndDate       DateTime?
+  addressUuid           String?
+  addressTimeZone       String?
+  cityName              String?
+  country               String?
+  poBox                 String?
+  poBoxDeviatingCityName String?
+  poBoxDeviatingCountry  String?
+  poBoxDeviatingRegion   String?
+  poBoxIsWithoutNumber   String?
+  poBoxLobbyName         String?
+  poBoxPostalCode        String?
+  postalCode             String?
+  region                 String?
+  streetName             String?
+  taxJurisdiction        String?
+  transportZone          String?
+
+  partner BusinessPartner @relation(fields: [businessPartner], references: [businessPartner])
+
+  @@id([businessPartner, addressId])
+  @@map("business_partner_addresses")
+}
+
+model Product {
+  product                      String  @id
+  productType                  String?
+  crossPlantStatus             String?
+  crossPlantStatusValidityDate DateTime?
+  creationDate                 DateTime?
+  createdByUser                String?
+  lastChangeDate               DateTime?
+  lastChangeDateTime           DateTime?
+  isMarkedForDeletion          String?
+  productOldId                 String?
+  grossWeight                  Decimal?
+  weightUnit                   String?
+  netWeight                    Decimal?
+  productGroup                 String?
+  baseUnit                     String?
+  division                     String?
+  industrySector               String?
+  description                  String?
+
+  salesOrderItems     SalesOrderItem[]
+  billingItems        BillingDocumentItem[]
+  productPlants       ProductPlant[]
+
+  @@map("products")
+}
+
+model ProductPlant {
+  product                      String
+  plant                        String
+  countryOfOrigin              String?
+  regionOfOrigin               String?
+  productionInvtryManagedLoc   String?
+  availabilityCheckType        String?
+  fiscalYearVariant             String?
+  profitCenter                 String?
+  mrpType                      String?
+
+  productRecord Product @relation(fields: [product], references: [product])
+
+  @@id([product, plant])
+  @@map("product_plants")
+}
+
+model Plant {
+  plant                         String  @id
+  plantName                     String?
+  valuationArea                 String?
+  plantCustomer                 String?
+  plantSupplier                 String?
+  factoryCalendar               String?
+  defaultPurchasingOrganization String?
+  salesOrganization             String?
+  addressId                     String?
+  plantCategory                 String?
+  distributionChannel           String?
+  division                      String?
+  language                      String?
+  isMarkedForArchiving          String?
+
+  @@map("plants")
+}
+
+model CustomerCompanyAssignment {
+  customer                  String
+  companyCode               String
+  accountingClerk           String?
+  accountingClerkFaxNumber  String?
+  accountingClerkPhoneNumber String?
+  alternativePayerAccount   String?
+  paymentBlockingReason     String?
+  paymentMethodsList        String?
+  paymentTerms              String?
+  reconciliationAccount     String?
+  deletionIndicator         Boolean?
+  customerAccountGroup      String?
+
+  @@id([customer, companyCode])
+  @@map("customer_company_assignments")
+}
+
+model CustomerSalesAreaAssignment {
+  customer                String
+  salesOrganization       String
+  distributionChannel     String
+  division                String
+  billingIsBlockedForCustomer String?
+  completeDeliveryIsDefined   Boolean?
+  creditControlArea           String?
+  currency                    String?
+  customerPaymentTerms        String?
+  deliveryPriority            String?
+  incotermsClassification     String?
+  incotermsLocation1          String?
+  salesGroup                  String?
+  salesOffice                 String?
+  shippingCondition           String?
+  salesDistrict               String?
+  exchangeRateType            String?
+
+  @@id([customer, salesOrganization, distributionChannel, division])
+  @@map("customer_sales_area_assignments")
+}
+
+model ProductStorageLocation {
+  product                            String
+  plant                              String
+  storageLocation                    String
+  physicalInventoryBlockInd          String?
+  dateOfLastPostedCntUnRstrcdStk     DateTime?
+
+  @@id([product, plant, storageLocation])
+  @@map("product_storage_locations")
+}
+
+
