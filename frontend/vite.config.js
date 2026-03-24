@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+const useProxy = !process.env.VITE_API_URL;
 
 export default defineConfig({
  plugins: [react()],
@@ -9,12 +10,14 @@ export default defineConfig({
  },
  server: {
    port: 5173,
-   proxy: {
-     '/query': 'http://localhost:3002',
-     '/graph': 'http://localhost:3002',
-     '/ingest': 'http://localhost:3002',
-     '/health': 'http://localhost:3002',
-   },
+   ...(useProxy && {
+     proxy: {
+       '/query': 'http://localhost:3002',
+       '/graph': 'http://localhost:3002',
+       '/ingest': 'http://localhost:3002',
+       '/health': 'http://localhost:3002',
+     },
+   }),
  },
 });
 
