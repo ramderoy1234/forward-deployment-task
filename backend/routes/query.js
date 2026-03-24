@@ -19,8 +19,8 @@ router.post('/', limiter, async (req, res) => {
  if (!question || typeof question !== 'string' || question.trim().length === 0) {
    return res.status(400).json({ error: 'Question is required' });
  }
- if (question.trim().length > 500) {
-   return res.status(400).json({ error: 'Question too long (max 500 characters)' });
+ if (question.trim().length > 1000) {
+   return res.status(400).json({ error: 'Question too long (max 1000 characters)' });
  }
 
 
@@ -40,7 +40,6 @@ router.post('/', limiter, async (req, res) => {
 
 
 module.exports = router;
-
 
 
 
