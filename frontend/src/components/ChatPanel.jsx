@@ -1,30 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import API_BASE from '../api.js';
 
 
-const SUGGESTIONS = [
- // Required: a
- { label: '📦 Top billed products',         query: 'Which products are associated with the highest number of billing documents?' },
- // Required: b
- { label: '🔍 Trace billing doc 90504248',  query: 'Trace the full flow of billing document 90504248 — Sales Order → Delivery → Billing → Journal Entry' },
- // Required: c
- { label: '⚠️ Delivered not billed',        query: 'Find sales orders that were delivered but not billed' },
- { label: '⚠️ Billed without delivery',     query: 'Find billing documents that have no associated delivery' },
- // Beyond examples
- { label: '📊 O2C funnel',                  query: 'Show O2C funnel — how many orders reached each stage' },
- { label: '📉 Incomplete O2C flows',        query: 'Show all sales orders with incomplete Order-to-Cash flows' },
- { label: '💸 Unpaid invoices',             query: 'Which invoices are unpaid?' },
- { label: '🔗 Billed but never paid',       query: 'Find orders billed but never paid' },
- { label: '⏱️ Order-to-delivery cycle time',query: 'What is the order-to-delivery cycle time for each sales order?' },
- { label: '🚨 Customers with overdue',      query: 'Which customers have outstanding unpaid invoices?' },
- { label: '💰 Revenue by customer',         query: 'Show revenue by customer — total billed amount per customer' },
- { label: '❌ Cancelled billing docs',      query: 'Which sales orders have cancelled billing documents?' },
- { label: '🚫 Products never ordered',      query: 'Which products have never been ordered?' },
- { label: '👤 Customer order totals',       query: 'Show all customers and their total order amounts' },
- { label: '🏆 Top ordering customer',       query: 'Which customer placed the most orders?' },
- { label: '📋 Full details order 740506',   query: 'Give full details of order 740506' },
-];
+const SUGGESTIONS = [];
 
 
 function extractNodeIds(rows) {
