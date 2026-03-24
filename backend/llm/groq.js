@@ -60,28 +60,47 @@ CRITICAL JOIN RULES:
 /* SYSTEM PROMPT - Explicit about column locations */
 const SYSTEM_PROMPT = `You are a PostgreSQL SQL generator for a SAP Order-to-Cash system.
 
-RULES (NEVER break these):
+🎯 QUERY PATTERNS - Match user request to pattern:
+
+PATTERN 1: Details of single order/invoice/delivery (NO complex joins needed!)
+- User: "give details of SO 740527" OR "get invoice 90504207" OR "show delivery D123"
+- Do this: Simple SELECT with WHERE clause, maybe 1-2 basic JOINs to get items
+- Example: SELECT * FROM sales_order_headers WHERE "salesOrder" = '740527'
+- ❌ DO NOT: Jump to payments/billing if user just wants order details
+
+PATTERN 2: Trace full flow (order → delivery → billing → payment)
+- User: "trace order 740527 through full O2C process" OR "show complete flow"
+- Do this: Use LEFT JOINs through: sales_order → delivery → billing_headers → payments
+- ❌ DO NOT: Use billing_document_items to link to payments! Use billing_document_headers.accountingDocument
+
+PATTERN 3: Summary/aggregation (total billed, unpaid invoices, etc.)
+- User: "total billed amount" OR "unpaid invoices" OR "revenue by customer"
+- Do this: GROUP BY + SUM/COUNT on appropriate headers tables
+- Look at billing_document_headers for billing data, payments table for payment status
+
+CRITICAL RULES (NEVER break):
 1. Generate EXACTLY ONE SELECT query. No semicolons. Return only the SQL.
 2. NEVER use INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, TRUNCATE.
 3. ALL camelCase column names MUST be wrapped in "double-quotes".
 4. Table names are snake_case - do NOT quote them.
-5. Always use LEFT JOINs when tracing document flows (sales→delivery→billing→payment).
-6. When joining to payments or journal_entry_items, ALWAYS go through billing_document_headers.accountingDocument.
+5. If user asks for single record details → use simple WHERE clause, NO complex joins
+6. If tracing full document flow → use LEFT JOINs: sales_order → delivery → billing_headers (NOT items!) → payments
 
-CRITICAL SCHEMA RULES:
-- billing_document_items has: billingDocument, billingDocumentItem, referenceSdDocument, material, netAmount
-- billing_document_headers has: billingDocument, accountingDocument, totalNetAmount, billingDocumentDate
-- Use billing_document_headers."accountingDocument" to link to payments/journal, NOT billing_document_items!
-- payments."invoiceReference" is ALWAYS NULL - NEVER use it. Use payments."accountingDocument" instead.
+CRITICAL COLUMN LOCATIONS (memorize these):
+✓ accountingDocument column EXISTS on: billing_document_headers, payments, journal_entry_items
+✗ accountingDocument column DOES NOT EXIST on: billing_document_items (NEVER use here!)
+✓ For linking billing to payments: JOIN payments ON payments."accountingDocument" = billing_document_headers."accountingDocument"
 
 ${SCHEMA_DESCRIPTION}
 
-Example correct joins:
-- Order to Delivery: LEFT JOIN outbound_delivery_items ON outbound_delivery_items."referenceSdDocument" = soh."salesOrder"
-- Delivery to Billing: LEFT JOIN billing_document_items ON billing_document_items."referenceSdDocument" = odh."deliveryDocument"
-- Billing to Payment: LEFT JOIN payments ON payments."accountingDocument" = bdh."accountingDocument"
+QUERY EXAMPLES (follow these patterns):
+1. Single order: SELECT * FROM sales_order_headers WHERE "salesOrder" = '740527' LIMIT 1;
+2. Order with items: SELECT soh.*, soi.* FROM sales_order_headers soh LEFT JOIN sales_order_items soi ON soi."salesOrder" = soh."salesOrder" WHERE soh."salesOrder" = '740527';
+3. Invoice details: SELECT * FROM billing_document_headers WHERE "billingDocument" = '90504207' LIMIT 1;
+4. Full trace (order→delivery→billing→payment): SELECT soh."salesOrder", odh."deliveryDocument", bdh."billingDocument", p."accountingDocument" FROM sales_order_headers soh LEFT JOIN outbound_delivery_items odi ON odi."referenceSdDocument" = soh."salesOrder" LEFT JOIN outbound_delivery_headers odh ON odh."deliveryDocument" = odi."deliveryDocument" LEFT JOIN billing_document_items bdi ON bdi."referenceSdDocument" = odh."deliveryDocument" LEFT JOIN billing_document_headers bdh ON bdh."billingDocument" = bdi."billingDocument" LEFT JOIN payments p ON p."accountingDocument" = bdh."accountingDocument" WHERE soh."salesOrder" = '740527';
 
-Use LIMIT 50 unless asked for more. Return ONLY raw SQL without any explanation.`;
+TEMPERATURE: 0 (deterministic, no randomness)
+Return ONLY raw SQL without any explanation.`;
 
 /* FORMAT PROMPT */
 const FORMAT_SYSTEM_PROMPT = 'You are a business analyst presenting SAP O2C query results. Rules: 1. For single records, write "FieldName: value" on separate lines. 2. Use **Section Header** before groups of fields. 3. For multiple records, use bullet format "- description: value". 4. Decode status codes: C=Complete, A=Not Started, B=Partial. 5. Always include currency for amounts. 6. If no data: "No records found". 7. Never write "Key:" or "Value:" as literal words. 8. Only use provided data, never invent. 9. Keep under 300 words.';
@@ -142,7 +161,7 @@ async function generateSQL(question) {
      { role: 'user', content: question },
    ],
    max_tokens: 1200,
-   temperature: 0.05,
+   temperature: 0,
  });
  return res.choices[0]?.message?.content?.trim() || '';
 }
@@ -160,7 +179,7 @@ async function formatResponse(question, sql, data) {
      },
    ],
    max_tokens: 900,
-   temperature: 0.2,
+   temperature: 0.1,
  });
  return res.choices[0]?.message?.content?.trim() || 'No answer generated.';
 }
