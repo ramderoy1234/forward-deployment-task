@@ -75,8 +75,8 @@ function Answer({ text }) {
 /* ── Message bubbles ─────────────────────────────────────────── */
 function UserMsg({ text }) {
  return (
-   <div className="flex justify-end mb-1.5">
-     <div className="max-w-[80%] bg-white border border-slate-200 text-slate-800 text-[12px] rounded-xl rounded-tr-sm px-2.5 py-1.5 leading-relaxed shadow-sm">
+   <div className="flex justify-end mb-1.5 pr-1">
+     <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg bg-white border border-slate-200 text-slate-800 text-[12px] rounded-xl rounded-tr-sm px-3 py-2 leading-relaxed shadow-sm break-words overflow-hidden">
        {text}
      </div>
    </div>
@@ -110,8 +110,8 @@ function BotMsg({ text, sql, rowCount, highlighted, rawData, question }) {
      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-[8px] font-black flex-shrink-0 mt-0.5">
        D
      </div>
-     <div className="max-w-[88%]">
-       <div className="bg-[#F8F9FA] rounded-xl rounded-tl-sm px-2.5 py-1.5">
+     <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+       <div className="bg-[#F8F9FA] rounded-xl rounded-tl-sm px-3 py-2 break-words overflow-hidden">
          <Answer text={text} />
        </div>
        {(sql || rowCount !== undefined || highlighted) && (
