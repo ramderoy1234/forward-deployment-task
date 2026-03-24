@@ -192,13 +192,13 @@ async function processQuery(question) {
  }
 
  const sql = extractFirstStatement(rawSql);
- validateSQL(sql);
 
  const RETRYABLE = [
    'more than one row returned by a subquery',
    'column',
    'ambiguous',
    'does not exist',
+   'schema error',
  ];
 
  const runSQL = async (s) => {
@@ -241,6 +241,8 @@ async function processQuery(question) {
  let data;
  let finalSql = sql;
  try {
+   // Validate INSIDE try-catch so validation errors can trigger retries
+   validateSQL(sql);
    data = await runSQL(sql);
  } catch (err) {
    const shouldRetry = RETRYABLE.some(p => err.message?.toLowerCase().includes(p));
