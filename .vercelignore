@@ -1,0 +1,14 @@
+backend/
+.env.local
+.env.production.local
+node_modules/
+*.log
+.DS_Store
+.git
+.gitignore
+README.md
+DEPLOYMENT.md
+.vscode/
+.idea/
+*.md
+!frontend/README.md

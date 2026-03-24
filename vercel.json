@@ -1,13 +1,11 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
+  "root": "frontend",
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "nodeVersion": "18.x",
   "env": {
     "VITE_API_URL": "@vite_api_url"
   },
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://your-backend-url.com/api/:path*"
-    }
-  ]
+  "envPrefix": "VITE_"
 }
