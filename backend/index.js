@@ -11,6 +11,8 @@ const ingestRouter = require('./routes/ingest');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy for rate limiting and X-Forwarded-For headers (required for Railway/Vercel)
+app.set('trust proxy', 1);
 
 app.use(cors({
  origin: true,

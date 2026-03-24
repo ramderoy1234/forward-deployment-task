@@ -213,14 +213,17 @@ async function processQuery(question) {
    
    // Enhanced error context for specific column errors
    let errorHint = '';
+   let tableColumnInfo = '';
+   
    if (errMsg.toLowerCase().includes('accountingdocument')) {
-     errorHint = '\n\nIMPORTANT: accountingDocument exists ONLY on billing_document_headers, NOT on billing_document_items. Always use billing_document_headers."accountingDocument" to link to payments/journals.';
+     errorHint = '\n\n⚠️ CRITICAL FIX:\nYou used billing_document_items."accountingDocument" but this column does NOT exist on that table!\n- billing_document_items has: billingDocument, billingDocumentItem, referenceSdDocument, material, netAmount, etc.\n- billing_document_headers HAS accountingDocument column\n- ALWAYS use: billing_document_headers."accountingDocument" to link to payments or journal entries\n- IF you need billing_document_items, join it to headers first: billing_document_items JOIN billing_document_headers ON ... then use headers.accountingDocument';
+     tableColumnInfo = '\nRECORRECT TABLE STRUCTURE:\n- billing_document_headers: billingDocument, accountingDocument, totalNetAmount, soldToParty, billingDocumentDate\n- billing_document_items: billingDocument (FK to headers), billingDocumentItem, material, referenceSdDocument (FK to delivery), netAmount';
    } else if (errMsg.toLowerCase().includes('invoicereference')) {
-     errorHint = '\n\nIMPORTANT: payments table does NOT have invoiceReference column or it is always NULL. Use payments."accountingDocument" instead, linked from billing_document_headers."accountingDocument".';
+     errorHint = '\n\n⚠️ CRITICAL FIX:\npayments."invoiceReference" is ALWAYS NULL - DO NOT USE IT!\n- Use payments."accountingDocument" instead\n- Link: payments."accountingDocument" = billing_document_headers."accountingDocument"';
    } else if (errMsg.toLowerCase().includes('column') && errMsg.toLowerCase().includes('does not exist')) {
      const columnMatch = errMsg.match(/column\s+([^\s]+)/i);
      if (columnMatch) {
-       errorHint = `\n\nThe column "${columnMatch[1]}" does not exist in that table. Check the SCHEMA DESCRIPTION carefully for the correct column name and table location.`;
+       errorHint = `\n\n⚠️ CRITICAL FIX:\nColumn "${columnMatch[1]}" does NOT exist in that table.\nCarefully check SCHEMA DESCRIPTION for correct column name and table.`;
      }
    }
    
@@ -230,7 +233,7 @@ async function processQuery(question) {
        { role: 'system', content: SYSTEM_PROMPT },
        { role: 'user', content: question },
        { role: 'assistant', content: failedSql },
-       { role: 'user', content: `The query failed with: "${errMsg}". Carefully check the SCHEMA DESCRIPTION above - some columns exist only on specific tables.${errorHint}\n\nFix the SQL and return ONLY the corrected query. Use CORRECT table and column names as per schema.` },
+       { role: 'user', content: `QUERY FAILED:\nError: "${errMsg}"\n\nFailed SQL:\n${failedSql}${errorHint}${tableColumnInfo}\n\n🔧 YOUR TASK:\n1. Identify which table has the column you need\n2. Rewrite the JOIN logic to go through correct tables\n3. Return ONLY corrected SQL - no explanations\n4. Use column names exactly as shown in SCHEMA DESCRIPTION` },
      ],
      max_tokens: 1200,
      temperature: 0,
