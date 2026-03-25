@@ -1,11 +1,110 @@
 # SAP O2C Graph Explorer
 
+A Graph-Based Data Modeling + LLM Query System for SAP Order-to-Cash (O2C) data. 
+**Works locally and deploys to production on Vercel (frontend) + Railway (backend).**
 
-A Graph-Based Data Modeling + LLM Query System for SAP Order-to-Cash (O2C) data.
+---
 
+## 🚀 Quick Deployment (Production)
 
-## Architecture
+### Deploy to Vercel (Frontend) + Railway (Backend)
 
+#### Step 1: Deploy Backend to Railway
+
+```bash
+npm install -g @railway/cli
+railway login
+cd backend
+railway init
+railway up
+# Copy the Railway URL (e.g., https://o2c-backend-xyz.railway.app)
+```
+
+#### Step 2: Set Frontend Environment Variable in Vercel
+
+1. Go to [Vercel Dashboard](https://vercel.com) → Your Project
+2. **Settings** → **Environment Variables**
+3. Add: `VITE_API_URL` = `https://your-railway-url.railway.app`
+4. **Redeploy**
+
+#### Step 3: Deploy Frontend to Vercel
+
+```bash
+npm install -g vercel
+cd frontend
+vercel --prod
+```
+
+**Frontend URL will be:** `https://your-project.vercel.app`
+
+---
+
+## 🏠 Local Development
+
+### 1. Set up PostgreSQL
+
+```bash
+psql -U postgres -c "CREATE DATABASE o2c_graph;"
+```
+
+### 2. Backend Setup
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+
+# Edit .env — set:
+# - DATABASE_URL=postgresql://user:pass@localhost:5432/o2c_graph
+# - GROQ_API_KEY=gsk_xxxx (free at console.groq.com)
+# - PORT=3001
+
+npm run db:push    # Push schema to PostgreSQL
+npm run ingest     # Load SAP JSONL data
+npm run dev        # Start with hot reload (or: npm start)
+```
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open **http://localhost:5173** in browser.
+
+Local API calls are **automatically proxied** to `localhost:3001` via Vite dev server.
+
+---
+
+## 🎯 Features
+
+### Graph Visualization
+- **Force-directed layout** with physics tuning (react-force-graph-2d)
+- **Lazy subgraph expansion** — click any node to expand its O2C flow
+- **Interactive highlighting** — hover over nodes to see connections
+- **Real-time focus** — zoom to specific order flows
+- **Node types** — 7 entity types with distinct colors
+
+### LLM Query Engine (Dodge AI)
+- **Natural language queries** → PostgreSQL SQL (deterministic generation, temperature=0)
+- **3-stage pipeline**: Classification → SQL Generation → Response Formatting
+- **Query patterns** — Automatically chooses simple queries for simple requests
+- **Smart retries** — Auto-fixes schema errors with context-aware hints
+- **Rate limiting** — 20 req/min per IP
+- **CSV Export** — Download query results in one click
+- **SQL visibility** — See generated SQL before execution
+
+### Data Model
+- **16 SAP tables** — O2C flow from order through journal entry
+- **Normalized relationships** — Foreign keys: salesOrder → delivery → billing → payment
+- **Prisma ORM** — Type-safe database queries
+- **PostgreSQL** — Production-ready relational database
+
+---
+
+## 📊 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -16,7 +115,7 @@ A Graph-Based Data Modeling + LLM Query System for SAP Order-to-Cash (O2C) data.
 │  │  Force-directed layout│    │  CSV Export + SQL View   │  │
 │  └───────────────────────┘    └──────────────────────────┘  │
 └──────────────────────────┬──────────────────────────────────┘
-                          │ HTTP (proxy via Vite → :3001)
+                          │ HTTP (vite proxy :3001 local, VITE_API_URL prod)
 ┌──────────────────────────▼──────────────────────────────────┐
 │                   Backend (Node.js + Express)                │
 │  ┌──────────┐   ┌──────────────┐   ┌──────────────────────┐ │
@@ -27,19 +126,428 @@ A Graph-Based Data Modeling + LLM Query System for SAP Order-to-Cash (O2C) data.
 │       │                │                      │             │
 │  ┌────▼────────────────▼──────────────────────▼──────────┐  │
 │  │              Graph Construction Layer                  │  │
-│  │   nodes[] + edges[] built from relational JOIN queries │  │
+│  │   nodes[] + edges[] from LEFT JOIN queries            │  │
 │  │   ID normalization · deduplication · lazy expansion   │  │
 │  └────────────────────────┬───────────────────────────────┘  │
 │                           │                                  │
 │  ┌────────────────────────▼───────────────────────────────┐  │
 │  │              Prisma ORM + PostgreSQL                   │  │
-│  │  sales_orders · deliveries · billing · payments        │  │
-│  │  business_partners · products · journal_entries        │  │
-│  │  customer_company · customer_sales_area · storage_locs │  │
+│  │  16 tables: sales_orders, deliveries, billing,        │  │
+│  │  payments, business_partners, products, etc.          │  │
 │  └────────────────────────────────────────────────────────┘  │
 │                        Groq API (LLM)                        │
+│                  (llama-3.3-70b-versatile)                   │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 🔧 Tech Stack
+
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Frontend | React | 18.3.1 |
+| Build | Vite | 5.4.11 |
+| Styling | Tailwind CSS | 3.4.19 |
+| Graph | react-force-graph-2d | 1.29.1 |
+| Backend | Node.js + Express | 4.21 |
+| ORM | Prisma | 5.22 |
+| Database | PostgreSQL | (Neon/self-hosted) |
+| LLM | Groq | llama-3.3-70b |
+| Rate Limit | express-rate-limit | 8.3.1 |
+
+---
+
+## 📁 Project Structure
+
+```
+forward-deployment-task/
+├── README.md                    # This file
+├── .gitignore
+├── .vercelignore               # Files excluded from Vercel deploy
+├── vercel.json                 # Vercel build config
+├── DEPLOYMENT.md               # Detailed deployment guide
+│
+├── backend/
+│   ├── index.js                # Express app + CORS + trust proxy
+│   ├── package.json
+│   ├── .env                    # Secrets (gitignored)
+│   ├── .env.example            # Template
+│   │
+│   ├── prisma/
+│   │   └── schema.prisma       # 16-table PostgreSQL schema
+│   │
+│   ├── db/
+│   │   └── prisma.js           # Prisma client singleton
+│   │
+│   ├── routes/
+│   │   ├── graph.js            # GET /graph, GET /graph/:nodeId
+│   │   ├── query.js            # POST /query (rate-limited LLM pipeline)
+│   │   └── ingest.js           # GET /ingest/status
+│   │
+│   ├── services/
+│   │   └── graph.js            # Node/edge builders, subgraph logic
+│   │
+│   ├── llm/
+│   │   └── groq.js             # 3-stage LLM: classify → SQL → format
+│   │                           # Query patterns, smart retry, caching
+│   │
+│   └── scripts/
+│       └── ingest.js           # One-time JSONL → PostgreSQL
+│
+├── frontend/
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js          # Dev proxy + build config
+│   ├── tailwind.config.js
+│   ├── .env                    # VITE_API_URL (gitignored)
+│   ├── .env.example            # Template
+│   │
+│   └── src/
+│       ├── main.jsx            # React entry
+│       ├── App.jsx             # Root component
+│       ├── api.js              # API base URL (local or production)
+│       │
+│       ├── pages/
+│       │   └── Dashboard.jsx   # Layout, state, graph+chat sync
+│       │
+│       ├── components/
+│       │   ├── GraphView.jsx   # react-force-graph-2d canvas
+│       │   ├── ChatPanel.jsx   # Dodge AI chat + LLM queries
+│       │   └── NodeDetailsCard.jsx  # Node metadata floating card
+│       │
+│       └── hooks/              # Custom React hooks (reserved)
+│
+└── sap-o2c-data/               # 19 JSONL folders
+    └── (not in git)
+```
+
+---
+
+## 🌐 Environment Variables
+
+### backend/.env
+
+```env
+DATABASE_URL=postgresql://user:pass@localhost:5432/o2c_graph
+GROQ_API_KEY=gsk_xxxxxxxxxxxx  # Free at console.groq.com
+PORT=3001
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+```
+
+**Production** (`NODE_ENV=production` on Railway):
+```env
+DATABASE_URL=postgresql://...@neon.tech
+GROQ_API_KEY=gsk_xxxxxxxxxxxx
+PORT=3000
+NODE_ENV=production
+FRONTEND_URL=https://your-frontend.vercel.app
+```
+
+### frontend/.env
+
+**Local development** (Vite proxy auto-routes to backend:3001):
+```env
+# Leave empty or comment out
+# VITE_API_URL=
+```
+
+**Production** (Vercel):
+```env
+VITE_API_URL=https://your-backend.railway.app
+```
+
+---
+
+## 📊 LLM Pipeline
+
+### Architecture (3 Stages)
+
+**Stage 1: Domain Classification**
+- Input: User question
+- Output: RELATED or UNRELATED
+- Purpose: Reject off-topic queries early
+- Model: llama-3.3-70b-versatile
+
+**Stage 2: SQL Generation**
+- Input: Full schema + key join paths + query patterns
+- Output: Single PostgreSQL SELECT statement
+- Rules:
+  - SELECT only (no INSERT/UPDATE/DELETE)
+  - Always double-quote camelCase columns
+  - Use LEFT JOIN for flow traces
+  - Join payments via `accountingDocument`, NOT `invoiceReference` ❌
+  - LIMIT 50 default
+  - Deterministic: temperature=0
+- Model: llama-3.3-70b-versatile
+- Safety: validateSQL() + 21 retryable error codes
+
+**Stage 3: Response Formatting**
+- Input: Query results (up to 25 rows)
+- Output: Natural language, structured answer
+  - Single records: Key: Value format
+  - Multiple records: Bullet list format
+  - Status codes decoded (C=Complete, A=None, B=Partial)
+  - Currency always included
+- Model: llama-3.3-70b-versatile (temperature=0.1)
+
+### Query Pattern Recognition
+
+| Pattern | Detection | SQL Strategy |
+|---------|-----------|--------------|
+| **Single record details** | "give details of", "show", "get" + entity ID | Simple SELECT + WHERE, minimal joins |
+| **Full flow trace** | "trace", "full flow", "complete journey" | Complete LEFT JOIN chain (sales→delivery→billing→payment) |
+| **Summary/Aggregation** | "total", "unpaid", "count", "revenue" | GROUP BY + SUM/COUNT on appropriate headers |
+
+### Guardrails
+
+| Guard | Implementation |
+|-------|---------------|
+| Domain filter | Separate classification LLM call |
+| SQL injection | SELECT-only; banned keywords checked |
+| Multi-statement | extractFirstStatement() strips after `;` |
+| Schema grounding | Full SCHEMA_DESCRIPTION in system prompt |
+| Result size | LIMIT 50 enforced + examples |
+| Rate limiting | 20 req/min per IP via express-rate-limit |
+| Response caching | In-memory Map (repeat questions skip LLM calls) |
+
+---
+
+## 🎨 Graph Visualization
+
+**Physics Config**
+- Charge strength: -900 (repulsion)
+- Link distance: 70px
+- Link strength: 0.9
+- Node collision: 18px
+
+**Node Types & Colors**
+
+| Type | Color | Represents |
+|------|-------|------------|
+| Sales Order | `#3B82F6` | O2C root |
+| Delivery | `#60A5FA` | Goods movement |
+| Invoice | `#EF4444` | Billing |
+| Payment | `#DC2626` | AR payment |
+| Customer | `#2563EB` | Business partner |
+| Product | `#93C5FD` | Material |
+| Journal | `#F87171` | FI entry |
+
+**Interactions**
+- **Click**: Open metadata card
+- **Expand**: Fetch + merge subgraph
+- **Focus**: Replace graph with node's subgraph
+- **Hover**: Highlight node + neighbors
+- **Reset View**: Reload overview
+- **Minimize**: Full-width chat mode
+
+---
+
+## 📚 Data Model
+
+### O2C Entity Flow
+
+```
+BusinessPartner ──places──► SalesOrder ──contains──► SalesOrderItem ──→ Product
+                                │
+                    delivered via│
+                                ▼
+                    OutboundDeliveryHeader ─item─→ OutboundDeliveryItem
+                                │
+                         billed via│
+                                ▼
+                    BillingDocumentHeader ─item─→ BillingDocumentItem
+                         │                              │
+              linked via │                              │
+         accountingDocument                          Product
+                         │
+                         ▼
+                    JournalEntryItem          Payment
+                         │                      │
+                         └──────paid by ────────┘
+```
+
+### Critical Join Rules
+
+| From | To | Column | Notes |
+|------|----|---------|---------| 
+| SalesOrder → Delivery | outbound_delivery_items | `referenceSdDocument = salesOrder` | |
+| Delivery → Billing | billing_document_items | `referenceSdDocument = deliveryDocument` | |
+| Billing → Payment | payments | `accountingDocument = billing.accountingDocument` | ✅ Correct |
+| Billing → Journal | journal_entry_items | `accountingDocument = billing.accountingDocument` | ✅ Correct |
+| Billing (item) → Accounting | ❌ | ❌ `billing_document_items.accountingDocument` | DOES NOT EXIST! Use billing_document_headers |
+| Payment → Billing | payments | ❌ `invoiceReference` | ALWAYS NULL! Use `accountingDocument` |
+
+---
+
+## 🧪 Example Queries
+
+Try these in the chat:
+
+```
+Give details of SO 740527
+Get invoice 90504207
+Show delivery D80737721
+
+Give full details of order 740506
+Trace full flow of billing document 90504248
+Which invoices are unpaid?
+
+Find orders delivered but not billed
+Show O2C funnel — how many orders reached each stage
+What is order-to-delivery cycle time?
+
+Which customers have outstanding unpaid invoices?
+Show revenue by customer
+Which products have never been ordered?
+Which sales orders have cancelled billing documents?
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### "SCHEMA ERROR: billing_document_items does not have accountingDocument"
+
+**Cause:** LLM tried to use a column that doesn't exist.
+**Fix:** LLM retries automatically with better hints. If persists:
+- Check backend logs for retry success/failure
+- Verify Railway deployed latest code (commit `b92921a` or later)
+- Wait 2-3 minutes for Railway redeploy after git push
+
+### Vite Proxy Not Working (Local Dev)
+
+**Symptom:** Frontend gets 404 calling `/query`
+**Fix:**
+```bash
+# Restart frontend dev server
+cd frontend
+npm run dev
+```
+
+### Database Connection Error
+
+**Symptom:** "connect ECONNREFUSED 127.0.0.1:5432"
+**Check:**
+```bash
+psql -U postgres -c "\l"    # List databases
+npm run db:push              # Push schema
+npm run db:generate          # Regenerate Prisma client
+```
+
+### CORS Error on Production
+
+**Symptom:** Frontend requests blocked from vercel.app
+**Fix:**
+1. Check `backend/.env` has `FRONTEND_URL=https://your-frontend.vercel.app`
+2. Restart Railway: Dashboard → Deployments → Redeploy
+3. Verify CPU/network in Railway logs
+
+### LLM Takes Too Long
+
+**Cause:** First request to question (not cached)
+**Normal:** Groq API takes 2-5 seconds
+**Cached:** Repeat questions are instant
+
+---
+
+## 📝 API Reference
+
+### GET /graph
+**Overview graph** — 20 most recent orders with full O2C chains.
+
+### GET /graph/:nodeId
+**Subgraph expansion** — fetch related nodes for any entity.
+
+| Prefix | Expands To |
+|--------|-----------|
+| `so-740506` | Full O2C chain (deliveries, invoices, payments) |
+| `bp-320000083` | Customer + all their orders |
+| `del-80737721` | Delivery + source orders + billing |
+| `bill-90504204` | Invoice + delivery + payments + journal |
+| `pay-9400000205-1` | Payment + linked invoice |
+| `prod-B8907367022152` | Product + orders containing it |
+
+### POST /query
+**Natural language → SQL → formatted result**
+
+```json
+// Request
+POST /query
+{ "question": "Which invoices are unpaid?" }
+
+// Response (200 OK)
+{
+  "answer": "There are 43 unpaid invoices totaling $2.1M...",
+  "sql": "SELECT DISTINCT bdh...",
+  "data": [
+    { "billingDocument": "90504204", "totalNetAmount": 5000.00, ... },
+    ...
+  ],
+  "isUnrelated": false
+}
+
+// Response (400 Bad Request)
+{
+  "message": "Query failed after retry: SCHEMA ERROR..."
+}
+```
+
+### GET /ingest/status
+**Record counts** — health check for data load.
+
+```json
+{
+  "sales_order_headers": 100,
+  "billing_document_headers": 163,
+  "payments": 120,
+  ...
+}
+```
+
+### GET /health
+**Backend health** — always returns `{"status": "ok"}`.
+
+---
+
+## 🚨 Production Checklist
+
+- [ ] Backend deployed to Railway
+- [ ] Frontend deployed to Vercel
+- [ ] Set `VITE_API_URL` in Vercel environment variables
+- [ ] Set `FRONTEND_URL` inRailway environment variables
+- [ ] Test `/health` endpoint
+- [ ] Test a simple query: "How many sales orders exist?"
+- [ ] Monitor Railway logs for errors
+- [ ] Monitor Vercel build logs for deployment issues
+
+---
+
+## 📄 Files of Interest
+
+| File | Purpose |
+|------|---------|
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Step-by-step deployment guide (Railway + Vercel) |
+| [vercel.json](vercel.json) | Vercel build config |
+| [.vercelignore](.vercelignore) | Files excluded from Vercel |
+| [backend/.env.example](backend/.env.example) | Backend secrets template |
+| [frontend/.env.example](frontend/.env.example) | Frontend config template |
+
+---
+
+## 📖 Learn More
+
+- **Prisma Docs**: https://www.prisma.io/docs
+- **Groq API**: https://console.groq.com
+- **React Force Graph**: https://github.com/vasturiano/react-force-graph
+- **Vite**: https://vitejs.dev
+- **Vercel**: https://vercel.com
+- **Railway**: https://railway.app
+
+---
+
+**Built for semester project demonstration of O2C data flow visualization + LLM integration.** ✨
 
 
 ## Tech Stack
@@ -525,5 +1033,6 @@ Identical questions skip all 3 Groq API calls. Simple `Map` keyed by normalised 
 
 
 
-/ /   r e d e p l o y  
+/ /   r e d e p l o y 
+ 
  
