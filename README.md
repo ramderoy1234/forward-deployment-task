@@ -222,8 +222,6 @@ forward-deployment-task/
     └── (not in git)
 ```
 
----
-
 ## 🌐 Environment Variables
 
 ### backend/.env
@@ -299,18 +297,6 @@ VITE_API_URL=https://your-backend.railway.app
 | **Single record details** | "give details of", "show", "get" + entity ID | Simple SELECT + WHERE, minimal joins |
 | **Full flow trace** | "trace", "full flow", "complete journey" | Complete LEFT JOIN chain (sales→delivery→billing→payment) |
 | **Summary/Aggregation** | "total", "unpaid", "count", "revenue" | GROUP BY + SUM/COUNT on appropriate headers |
-
-### Guardrails
-
-| Guard | Implementation |
-|-------|---------------|
-| Domain filter | Separate classification LLM call |
-| SQL injection | SELECT-only; banned keywords checked |
-| Multi-statement | extractFirstStatement() strips after `;` |
-| Schema grounding | Full SCHEMA_DESCRIPTION in system prompt |
-| Result size | LIMIT 50 enforced + examples |
-| Rate limiting | 20 req/min per IP via express-rate-limit |
-| Response caching | In-memory Map (repeat questions skip LLM calls) |
 
 ---
 
